@@ -24,8 +24,8 @@ smithay                 = "0.7"
 smithay-client-toolkit  = "0.19"
 wayland-client          = "0.31"
 wayland-server          = "0.31"
-wayland-protocols       = "0.31"
-wayland-protocols-wlr   = "0.2"
+wayland-protocols       = { version = "0.31", features = ["client"] }
+wayland-protocols-wlr   = { version = "0.2", features = ["client"] }
 calloop                 = "0.13"
 calloop-wayland-source  = "0.3"
 
@@ -61,6 +61,8 @@ nix                     = { version = "0.27", features = ["socket", "fs"] }
 
 # Dev / test
 proptest                = "1"
+color-eyre              = "0.6"
+serial_test             = "3"
 
 [profile.release]
 opt-level   = 3

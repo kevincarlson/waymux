@@ -7,9 +7,31 @@ authors.workspace = true
 repository.workspace = true
 description = "Waymux Bridge: Termux daemon that captures Wayland compositor output and streams frames to Android clients."
 
+[lib]
+name = "waymux_bridge"
+path = "src/lib.rs"
+
 [[bin]]
 name = "waymux-bridge"
 path = "src/main.rs"
 
 [dependencies]
-waymux-proto = { workspace = true }
+waymux-proto           = { workspace = true }
+smithay-client-toolkit = { workspace = true }
+wayland-client         = { workspace = true }
+wayland-protocols      = { workspace = true }
+wayland-protocols-wlr  = { workspace = true }
+calloop                = { workspace = true }
+calloop-wayland-source = { workspace = true }
+tokio                  = { workspace = true }
+zstd                   = { workspace = true }
+bytes                  = { workspace = true }
+thiserror              = { workspace = true }
+tracing                = { workspace = true }
+tracing-subscriber     = { workspace = true }
+clap                   = { workspace = true }
+nix                    = { workspace = true }
+color-eyre             = { workspace = true }
+
+[dev-dependencies]
+serial_test = { workspace = true }
