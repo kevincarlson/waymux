@@ -1,0 +1,72 @@
+[workspace]
+resolver = "2"
+members = [
+    "waymux-proto",
+    "waymux-bridge",
+    "waymux-client-rs",
+    "light-speed-desktop",
+]
+# waymux-client-android is an Android Studio project and not part of the Cargo workspace.
+
+[workspace.package]
+version     = "0.1.0"
+edition     = "2024"
+license     = "Apache-2.0"
+authors     = ["AppThere Contributors"]
+repository  = "https://github.com/appthere/waymux"
+
+[workspace.dependencies]
+# Protocol
+waymux-proto            = { path = "waymux-proto" }
+
+# Wayland (compositor + client)
+smithay                 = "0.7"
+smithay-client-toolkit  = "0.19"
+wayland-client          = "0.31"
+wayland-server          = "0.31"
+wayland-protocols       = "0.31"
+wayland-protocols-wlr   = "0.2"
+calloop                 = "0.13"
+calloop-wayland-source  = "0.3"
+
+# Rendering
+wgpu                    = "0.20"
+iced                    = "0.12"
+gtk4                    = "0.8"
+
+# Async
+tokio                   = { version = "1", features = ["full"] }
+
+# Encoding
+zstd                    = "0.13"
+bytes                   = "1"
+
+# Error handling / logging
+thiserror               = "1"
+tracing                 = "0.1"
+tracing-subscriber      = { version = "0.3", features = ["env-filter"] }
+
+# Android JNI
+jni                     = "0.21"
+tracing-android         = "0.2"
+
+# Config / CLI
+serde                   = { version = "1", features = ["derive"] }
+toml                    = "0.8"
+clap                    = { version = "4", features = ["derive", "env"] }
+
+# Input
+xkbcommon               = "0.7"
+nix                     = { version = "0.27", features = ["socket", "fs"] }
+
+# Dev / test
+proptest                = "1"
+
+[profile.release]
+opt-level   = 3
+lto         = "thin"
+codegen-units = 1
+strip       = "debuginfo"
+
+[profile.dev]
+opt-level   = 1   # Faster incremental builds for debug; wgpu needs at least opt-level 1
