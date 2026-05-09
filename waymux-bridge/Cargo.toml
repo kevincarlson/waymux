@@ -1,0 +1,15 @@
+[package]
+name        = "waymux-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Waymux Bridge: Termux daemon that captures Wayland compositor output and streams frames to Android clients."
+
+[[bin]]
+name = "waymux-bridge"
+path = "src/main.rs"
+
+[dependencies]
+waymux-proto = { workspace = true }

@@ -1,0 +1,20 @@
+[package]
+name        = "waymux-proto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Shared binary protocol types and codecs for the Waymux Frame Protocol (WFP) and Waymux Input Protocol (WIP)."
+
+[features]
+default = []
+serde   = ["dep:serde"]
+
+[dependencies]
+thiserror = { workspace = true }
+bytes     = { workspace = true }
+serde     = { version = "1", features = ["derive"], optional = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

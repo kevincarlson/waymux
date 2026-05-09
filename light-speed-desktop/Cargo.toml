@@ -1,0 +1,14 @@
+[package]
+name        = "light-speed-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Light Speed Desktop: lightweight Wayland compositor and desktop environment built with Smithay."
+
+[[bin]]
+name = "light-speed-desktop"
+path = "src/main.rs"
+
+[dependencies]
