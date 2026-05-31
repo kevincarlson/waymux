@@ -80,18 +80,11 @@ impl Pipeline {
                         Some(f) => f,
                         None => break,
                     };
-                    let dead_ids: Vec<u64> = Vec::new();
-                    for (id, session) in &self.sessions {
+                    for session in self.sessions.values() {
                         // PERF: Bytes::clone is arc-clone, O(1) — no pixel data copied.
                         session.try_send_frame(frame.clone());
-                        // Sessions that are disconnected will log a debug trace inside
-                        // try_send_frame; they are cleaned up via RemoveSession commands
-                        // from the reader task, so we don't collect dead IDs here.
-                        let _ = id;
-                    }
-                    // Drop any sessions that have been explicitly marked dead.
-                    for id in dead_ids {
-                        self.sessions.remove(&id);
+                        // Disconnected sessions are cleaned up via RemoveSession commands
+                        // sent by the writer task on send failure.
                     }
                 }
 
