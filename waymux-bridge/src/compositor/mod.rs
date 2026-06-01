@@ -4,7 +4,7 @@
 pub mod input;
 pub mod screencopy;
 
-pub use input::{dispatch_wip_input, InputInjector};
+pub use input::{dispatch_wip_input, InputInjector, WaylandInjector};
 pub use screencopy::ScreencopyState;
 
 use bytes::Bytes;
@@ -21,6 +21,8 @@ use wayland_protocols_wlr::virtual_pointer::v1::client::{
     zwlr_virtual_pointer_manager_v1::{self, ZwlrVirtualPointerManagerV1},
     zwlr_virtual_pointer_v1::{self, ZwlrVirtualPointerV1},
 };
+
+use waymux_proto::WipMessage;
 
 use crate::encoder::FrameEncoder;
 use crate::error::BridgeError;
@@ -276,4 +278,108 @@ pub fn connect(
     }
 
     Ok((CompositorClient { conn, globals }, event_queue))
+}
+
+// ── Event loop ───────────────────────────────────────────────────────────────
+
+/// Run the Wayland event loop on the calling thread until the compositor
+/// disconnects or `wip_rx` is closed.
+///
+/// 1. Performs an initial blocking roundtrip to bind all globals.
+/// 2. Creates the virtual pointer (if `zwlr_virtual_pointer_manager_v1` is available).
+/// 3. Requests the first screencopy frame.
+/// 4. Enters a dispatch loop: drains `wip_rx` input, then blocks on Wayland events.
+pub fn run_event_loop(
+    _client: CompositorClient,
+    mut event_queue: EventQueue<BridgeState>,
+    mut state: BridgeState,
+    wip_rx: std::sync::mpsc::Receiver<WipMessage>,
+) {
+    // ── Initial roundtrip: enumerate and bind globals ─────────────────────
+    if let Err(e) = event_queue.roundtrip(&mut state) {
+        tracing::error!("Wayland initial roundtrip failed: {e}");
+        return;
+    }
+
+    // ── Post-roundtrip: create the virtual pointer ────────────────────────
+    let qh = event_queue.handle();
+    if let (Some(vpm), Some(seat)) = (state.vp_manager.as_ref(), state.seat.as_ref()) {
+        state.virtual_pointer = Some(vpm.create_virtual_pointer(Some(seat), &qh, ()));
+        tracing::info!("virtual pointer created");
+    } else {
+        tracing::warn!(
+            "zwlr_virtual_pointer_manager_v1 or wl_seat not available; \
+             pointer input injection disabled"
+        );
+    }
+
+    // ── Start the screencopy capture loop ─────────────────────────────────
+    match (state.screencopy_manager.as_ref(), state.primary_output.as_ref()) {
+        (Some(mgr), Some(out)) => {
+            ScreencopyState::request_frame(mgr, out, &qh);
+            if let Err(e) = event_queue.flush() {
+                tracing::error!("Wayland flush after first frame request failed: {e}");
+                return;
+            }
+            tracing::info!("screencopy capture loop started");
+        }
+        _ => {
+            tracing::error!(
+                "zwlr_screencopy_manager_v1 or primary wl_output not found; \
+                 screencopy cannot start"
+            );
+            return;
+        }
+    }
+
+    // ── Main dispatch loop ────────────────────────────────────────────────
+    loop {
+        // Drain pending WIP input messages from client reader tasks.
+        loop {
+            match wip_rx.try_recv() {
+                Ok(msg) => {
+                    if let Some(vp) = state.virtual_pointer.as_ref() {
+                        let mut injector = WaylandInjector {
+                            virtual_pointer: vp.clone(),
+                            output_width: state.output_width,
+                            output_height: state.output_height,
+                        };
+                        if let Err(e) = dispatch_wip_input(&msg, &mut injector) {
+                            tracing::warn!("input injection error: {e}");
+                        }
+                    }
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    tracing::info!("WIP channel closed; Wayland thread exiting");
+                    return;
+                }
+            }
+        }
+
+        // Flush any virtual-pointer events we just injected.
+        let _ = event_queue.flush();
+
+        // Block until the compositor sends us events (next frame, etc.).
+        match event_queue.blocking_dispatch(&mut state) {
+            Ok(_) => {}
+            Err(e) => {
+                if state.client_state != CompositorClientState::ShuttingDown {
+                    tracing::error!("Wayland dispatch error: {e}");
+                }
+                break;
+            }
+        }
+
+        match state.client_state {
+            CompositorClientState::CompositorLost | CompositorClientState::Error => {
+                tracing::error!("compositor connection lost; Wayland thread exiting");
+                break;
+            }
+            CompositorClientState::ShuttingDown => break,
+            _ => {}
+        }
+    }
+
+    tracing::info!("Wayland event loop exited");
 }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Input injection abstraction and WIP→Wayland dispatch.
 
+use wayland_client::protocol::wl_pointer;
+use wayland_protocols_wlr::virtual_pointer::v1::client::zwlr_virtual_pointer_v1::ZwlrVirtualPointerV1;
 use waymux_proto::{PointerAxis, WipMessage};
 use crate::error::BridgeError;
 
@@ -115,6 +117,109 @@ pub fn dispatch_wip_input<I: InputInjector>(
         }
     }
 }
+
+// ── WaylandInjector ──────────────────────────────────────────────────────────
+
+/// A live [`InputInjector`] backed by a `zwlr_virtual_pointer_v1` object.
+///
+/// Pointer events are translated to absolute coordinates in compositor pixels
+/// and forwarded to the virtual pointer. Touch and keyboard injection require
+/// additional Wayland globals (`zwp_virtual_touch_v1`, `zwp_virtual_keyboard_v1`)
+/// that are not bound in M2; those methods emit a warning and succeed silently.
+pub struct WaylandInjector {
+    /// The virtual pointer used to inject pointer events.
+    pub virtual_pointer: ZwlrVirtualPointerV1,
+    /// Compositor output width in pixels (used for absolute motion extent).
+    pub output_width: u32,
+    /// Compositor output height in pixels.
+    pub output_height: u32,
+}
+
+impl InputInjector for WaylandInjector {
+    fn pointer_motion(&mut self, x: f64, y: f64, time_ms: u32) -> Result<(), BridgeError> {
+        let x_clamped = x.clamp(0.0, (self.output_width.saturating_sub(1)) as f64) as u32;
+        let y_clamped = y.clamp(0.0, (self.output_height.saturating_sub(1)) as f64) as u32;
+        self.virtual_pointer.motion_absolute(
+            time_ms,
+            x_clamped,
+            y_clamped,
+            self.output_width,
+            self.output_height,
+        );
+        self.virtual_pointer.frame();
+        Ok(())
+    }
+
+    fn pointer_button(
+        &mut self,
+        button: u32,
+        pressed: bool,
+        time_ms: u32,
+    ) -> Result<(), BridgeError> {
+        let btn_state = if pressed {
+            wl_pointer::ButtonState::Pressed
+        } else {
+            wl_pointer::ButtonState::Released
+        };
+        self.virtual_pointer.button(time_ms, button, btn_state);
+        self.virtual_pointer.frame();
+        Ok(())
+    }
+
+    fn pointer_axis(
+        &mut self,
+        axis: PointerAxis,
+        value: f64,
+        time_ms: u32,
+    ) -> Result<(), BridgeError> {
+        let wl_axis = match axis {
+            PointerAxis::Vertical => wl_pointer::Axis::VerticalScroll,
+            PointerAxis::Horizontal => wl_pointer::Axis::HorizontalScroll,
+        };
+        self.virtual_pointer.axis(time_ms, wl_axis, value);
+        self.virtual_pointer.frame();
+        Ok(())
+    }
+
+    fn touch_down(
+        &mut self,
+        _id: u32,
+        _x: f64,
+        _y: f64,
+        _time_ms: u32,
+    ) -> Result<(), BridgeError> {
+        tracing::warn!("touch injection not implemented in M2 (requires zwp_virtual_touch_v1)");
+        Ok(())
+    }
+
+    fn touch_motion(
+        &mut self,
+        _id: u32,
+        _x: f64,
+        _y: f64,
+        _time_ms: u32,
+    ) -> Result<(), BridgeError> {
+        Ok(())
+    }
+
+    fn touch_up(&mut self, _id: u32, _time_ms: u32) -> Result<(), BridgeError> {
+        Ok(())
+    }
+
+    fn key_event(
+        &mut self,
+        _keycode: u32,
+        _pressed: bool,
+        _time_ms: u32,
+    ) -> Result<(), BridgeError> {
+        tracing::warn!(
+            "key injection not implemented in M2 (requires zwp_virtual_keyboard_v1)"
+        );
+        Ok(())
+    }
+}
+
+// ── MockInjector ─────────────────────────────────────────────────────────────
 
 /// A test-helper [`InputInjector`] that records all injected events.
 ///
