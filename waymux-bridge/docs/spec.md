@@ -14,6 +14,35 @@
 
 ---
 
+## Implementation Status
+
+The crate is built around a `source::FrameSource` seam (`display_info()` plus an
+async `run()` that feeds `RawFrame`s into the pipeline). This decouples *where
+frames come from* from the encode/serve machinery, so the Wayland capture
+backend slots in without touching the rest of the daemon.
+
+**Implemented (M2 core), fully tested and runnable without a compositor:**
+
+- `config` — env + CLI parsing (`WAYMUX_SOCKET`, `WAYMUX_ENCODING`, etc.).
+- `source::TestPatternSource` — an animated BGRA8 gradient source. Lets the
+  daemon stream real frames with no compositor, which also unblocks the Android
+  client (M3) before the Wayland backend exists.
+- `encoder` — `FrameEncoder` trait with `RawBgra8Encoder` and `ZstdBgra8Encoder`
+  (row-packing, padding strip, zstd round-trip).
+- `server` — Unix socket accept loop, per-client `FrameQueue` with **drop-oldest**
+  backpressure, `DisplayInfo`-on-connect, session registry, inbound WIP drain.
+- `pipeline` — source → encode → `FrameFull` framing → broadcast fan-out.
+
+**Deferred (requires Termux + a live `wlr-screencopy` compositor to build and
+verify):**
+
+- `source::wayland` — a `FrameSource` backed by `smithay-client-toolkit` +
+  `wlr-screencopy`, bridged from `calloop` to the tokio pipeline via a channel.
+- Input injection (`zwlr-virtual-pointer-v1` / `zwp-virtual-keyboard-v1`),
+  which is milestone M4 — the inbound WIP stream is already decoded and drained.
+
+---
+
 ## Dependencies
 
 ```toml
