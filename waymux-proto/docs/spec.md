@@ -9,7 +9,7 @@
 
 ## Purpose
 
-`waymux-proto` is the single source of truth for all binary protocol types shared between `waymux-bridge` and `waymux-client-rs`. It defines, encodes, and decodes all messages in:
+`waymux-proto` is the single source of truth for all binary protocol types shared between `waymux-bridge` and `waymux-client`. It defines, encodes, and decodes all messages in:
 
 - **Waymux Frame Protocol (WFP):** messages flowing from Bridge to Client (frame data, display metadata).
 - **Waymux Input Protocol (WIP):** messages flowing from Client to Bridge (pointer, touch, stylus, keyboard events).

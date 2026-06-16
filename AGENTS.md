@@ -12,7 +12,7 @@ AppThere Waymux is a Rust-first monorepo implementing a Wayland compositor outpu
 |---|---|---|
 | `waymux-proto/` | Rust lib | Shared protocol types (WFP + WIP) |
 | `waymux-bridge/` | Rust bin | Termux daemon, Wayland client + IPC server |
-| `waymux-client-rs/` | Rust cdylib | Android JNI library (rendering + input) |
+| `waymux-client/` | Rust cdylib | Android JNI library (rendering + input) |
 | `waymux-client-android/` | Android/Kotlin | Activity shell + build integration |
 | `light-speed-desktop/` | Rust bin | Wayland compositor + DE |
 
@@ -24,9 +24,9 @@ Read the relevant `SPEC.md` in each directory before making changes to that pack
 
 These rules are **enforced by CI** and must never be violated:
 
-1. **No `unwrap()` or `expect()`** in library code (`waymux-proto`, `waymux-bridge`, `waymux-client-rs`, `light-speed-desktop`). Use `?`, `match`, or typed `Result` returns. `main.rs` may use `color-eyre`'s `eyre!` macro.
+1. **No `unwrap()` or `expect()`** in library code (`waymux-proto`, `waymux-bridge`, `waymux-client`, `light-speed-desktop`). Use `?`, `match`, or typed `Result` returns. `main.rs` may use `color-eyre`'s `eyre!` macro.
 
-2. **No `unsafe` blocks** unless at an FFI boundary (JNI in `waymux-client-rs`). Every `unsafe` block **must** have a `// SAFETY:` comment immediately above it explaining all invariants upheld. Do not add `unsafe` to work around borrow-checker issues — redesign instead.
+2. **No `unsafe` blocks** unless at an FFI boundary (JNI in `waymux-client`). Every `unsafe` block **must** have a `// SAFETY:` comment immediately above it explaining all invariants upheld. Do not add `unsafe` to work around borrow-checker issues — redesign instead.
 
 3. **No excessive `.clone()`**. For large data (frame buffers, strings, `Vec<u8>` payloads), prefer `Arc<[u8]>`, slices, or owned-once patterns. If you must clone something large, add a `// PERF: clone justified because ...` comment.
 
@@ -46,7 +46,7 @@ These rules are **enforced by CI** and must never be violated:
 - Adding a new dependency requires an ADR entry in `docs/adr/` — create one as part of the same PR.
 - The `waymux-proto` crate must have **zero** dependencies on `smithay`, `wgpu`, or `tokio`. It may use `thiserror`, `serde` (behind a feature flag), and `bytes`.
 - The `waymux-bridge` crate must be cross-compilable to `aarch64-linux-android` (Termux). Do not use crates that require `std::net::TcpStream` on Android without `cfg` guards; use `tokio::net::UnixStream`.
-- The `waymux-client-rs` crate compiles as a `cdylib`. Its public API surface is only JNI-exported functions (`#[no_mangle] pub extern "system" fn Java_...`). Do not expose other pub items except via Rust-internal modules.
+- The `waymux-client` crate compiles as a `cdylib`. Its public API surface is only JNI-exported functions (`#[no_mangle] pub extern "system" fn Java_...`). Do not expose other pub items except via Rust-internal modules.
 
 ---
 
@@ -67,7 +67,7 @@ These rules are **enforced by CI** and must never be violated:
 - `src/encoder/`: Frame encoding pipeline.
 - `src/config.rs`: Config struct (parsed from env + CLI).
 
-### Client-RS (waymux-client-rs)
+### Client-RS (waymux-client)
 
 - `src/lib.rs`: JNI exports only. Max 100 lines.
 - `src/renderer/`: wgpu frame rendering pipeline.

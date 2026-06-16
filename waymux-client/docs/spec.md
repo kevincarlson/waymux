@@ -1,7 +1,7 @@
 # Waymux Client — Package Specification
 
 This document covers both sub-packages:
-- `waymux-client-rs/` — Rust JNI library (`cdylib`)
+- `waymux-client/` — Rust JNI library (`cdylib`)
 - `waymux-client-android/` — Android application (Kotlin)
 
 **Version:** 0.1.0  
@@ -48,7 +48,7 @@ The Kotlin `Activity` is a thin shell that manages Android lifecycle and delegat
 
 ---
 
-## waymux-client-rs
+## waymux-client
 
 ### Dependencies
 
@@ -71,7 +71,7 @@ zstd           = "0.13"
 ### Module Layout
 
 ```
-waymux-client-rs/src/
+waymux-client/src/
 ├── lib.rs            # JNI exports only; initializes runtime on first call
 ├── error.rs          # ClientError type
 ├── state.rs          # ClientState: owns runtime, renderer, connection
@@ -233,7 +233,7 @@ No internet permission is required (all communication is local Unix socket).
 
 ## Testing Requirements
 
-### Rust (waymux-client-rs)
+### Rust (waymux-client)
 
 - `tests/decoder_raw.rs`: create a synthetic `WfpMessage::FrameFull` with `RawBgra8` encoding, decode it, verify pixel data matches.
 - `tests/decoder_zstd.rs`: same with `ZstdBgra8` encoding; compress input first with `zstd`, then decode.
