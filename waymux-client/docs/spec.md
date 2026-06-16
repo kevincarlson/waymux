@@ -23,6 +23,41 @@ The Kotlin `Activity` is a thin shell that manages Android lifecycle and delegat
 
 ---
 
+## Implementation Status
+
+The `waymux-client` crate is currently the **host-portable client core**: the
+protocol-facing logic that builds and is fully tested in CI without an Android
+device or NDK.
+
+**Implemented (M3 core), host-tested:**
+
+- `decoder` — `decode_full()` turning WFP `FrameFull` payloads into BGRA8
+  (`RawBgra8` passthrough and `ZstdBgra8` decompression), with size validation.
+- `input` — `InputSerializer`: Android-space pointer/touch/stylus/keyboard
+  events → WIP messages, applying the `compositor / surface` coordinate
+  normalization; plus `serialize()` to length-prefixed bytes.
+- `connection` — tokio `UnixStream` transport: reads framed WFP, writes framed
+  WIP.
+- `state::ClientState` — owns the background connection task, exposes the latest
+  decoded frame and display info to the render thread, multiplexes outbound
+  input, and answers WFP `Ping` with WIP `Pong`.
+- `examples/dump_frame.rs` — connects to a running bridge and prints the first
+  decoded frame; verified live against `waymux-bridge` over a real socket.
+
+**Deferred (requires the Android NDK / SDK and a device or emulator to build
+and verify):**
+
+- The JNI cdylib layer (`crate-type = ["cdylib"]`, `jni`): the
+  `Java_app_appthere_waymux_RustBridge_*` exports described below, wrapping
+  `ClientState` behind an opaque handle. Adds the crate's single `unsafe` block
+  (`ANativeWindow_fromSurface`).
+- The `renderer` (wgpu/Vulkan): upload `DecodedFrame` to a texture and blit to
+  the `ANativeWindow`.
+- `waymux-client-android` — the Kotlin Activity, `RustBridge` bindings, and
+  Gradle build integration.
+
+---
+
 ## Architecture
 
 ```

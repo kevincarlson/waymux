@@ -942,6 +942,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "waymux-client"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "waymux-proto",
+ "zstd",
+]
+
+[[package]]
 name = "waymux-proto"
 version = "0.1.0"
 dependencies = [

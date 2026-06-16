@@ -1,0 +1,21 @@
+[package]
+name = "waymux-client"
+description = "Core client logic for the Waymux Android app: WFP frame decoding, WIP input serialization, and the Unix-socket transport."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+# NOTE: the JNI cdylib layer (`crate-type = ["cdylib"]`, `jni`, `wgpu`,
+# `tracing-android`) is added together with the Android integration; it cannot
+# be built or tested without the Android NDK, which this environment lacks.
+# Until then this is a host-testable library crate.
+
+[dependencies]
+waymux-proto = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+zstd = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

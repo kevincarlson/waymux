@@ -3,9 +3,9 @@ resolver = "2"
 members = [
     "waymux-proto",
     "waymux-bridge",
+    "waymux-client",
 ]
 # Crates are added to the workspace as each is implemented (see docs/spec.md §10):
-#   "waymux-client"        — M3 (Android JNI cdylib; renamed from "waymux-client-rs")
 #   "light-speed-desktop"  — deferred until after the M1–M4 MVP
 # waymux-client-android is an Android Studio project and not part of the Cargo workspace.
 
