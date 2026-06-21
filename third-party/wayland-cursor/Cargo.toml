@@ -1,0 +1,28 @@
+# Vendored copy of wayland-cursor 0.31.14 with a single Android build fix.
+#
+# Upstream's `src/lib.rs` imports `rustix::shm` unconditionally, but rustix gates
+# its `shm` module out on `target_os = "android"`, so the crate fails to compile
+# for Termux/Android (`error[E0432]: unresolved import rustix::shm`). The only
+# change here is to `#[cfg]`-gate that import and its `shm_open` fallback off on
+# Android, where `memfd_create` is the path actually used at runtime.
+#
+# Wired in via `[patch.crates.io]` in the workspace root Cargo.toml. See
+# docs/adr/adr-00008.md. Keep this in sync with upstream when bumping the version.
+[package]
+name = "wayland-cursor"
+version = "0.31.14"
+documentation = "https://docs.rs/wayland-cursor/"
+repository = "https://github.com/smithay/wayland-rs"
+authors = ["Elinor Berger <elinor@safaradeg.net>"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.71"
+categories = ["gui", "api-bindings"]
+keywords = ["wayland", "client"]
+description = "Bindings to libwayland-cursor (vendored with an Android build fix; see ADR-008)."
+readme = false
+
+[dependencies]
+wayland-client = "0.31.14"
+xcursor = "0.3.1"
+rustix = { version = "1.0.2", features = ["shm"] }

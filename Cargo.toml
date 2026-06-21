@@ -5,6 +5,13 @@ members = [
     "waymux-bridge",
     "waymux-client",
 ]
+# Vendored third-party crates carrying Android build fixes; pulled in via
+# [patch.crates-io] below, not built as workspace members (so workspace-wide
+# fmt/clippy/test don't apply to them). See docs/adr/adr-00008.md.
+exclude = [
+    "third-party/wayland-cursor",
+    "third-party/smithay-client-toolkit",
+]
 # Crates are added to the workspace as each is implemented (see docs/spec.md §10):
 #   "light-speed-desktop"  — deferred until after the M1–M4 MVP
 # waymux-client-android is an Android Studio project and not part of the Cargo workspace.
@@ -69,6 +76,15 @@ nix                     = { version = "0.27", features = ["socket", "fs"] }
 
 # Dev / test
 proptest                = "1"
+
+# smithay-client-toolkit and its dependency wayland-cursor both import
+# `rustix::shm` unconditionally, which rustix gates out on Android — breaking the
+# Termux cross-build of waymux-bridge. SCTK additionally only uses `memfd_create`
+# on Linux, falling back to the (Android-incompatible) `shm_open` path. Point both
+# at vendored copies carrying minimal `#[cfg]` fixes. See docs/adr/adr-00008.md.
+[patch.crates-io]
+wayland-cursor = { path = "third-party/wayland-cursor" }
+smithay-client-toolkit = { path = "third-party/smithay-client-toolkit" }
 
 [profile.release]
 opt-level   = 3
