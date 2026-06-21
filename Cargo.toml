@@ -70,6 +70,13 @@ nix                     = { version = "0.27", features = ["socket", "fs"] }
 # Dev / test
 proptest                = "1"
 
+# wayland-cursor is pulled in (non-optionally) by smithay-client-toolkit, but its
+# 0.31.x releases import `rustix::shm` unconditionally, which rustix gates out on
+# Android — breaking the Termux cross-build of waymux-bridge. Point it at a
+# vendored copy carrying a minimal `#[cfg]` fix. See docs/adr/adr-00008.md.
+[patch.crates-io]
+wayland-cursor = { path = "third-party/wayland-cursor" }
+
 [profile.release]
 opt-level   = 3
 lto         = "thin"
