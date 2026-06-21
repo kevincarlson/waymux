@@ -7,9 +7,9 @@ use std::sync::Arc;
 use bytes::{Bytes, BytesMut};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tokio::sync::{Mutex, Notify};
+use tokio::sync::{Mutex, Notify, mpsc};
 use tracing::trace;
-use waymux_proto::{WfpMessage, decode_wip, encode_wfp};
+use waymux_proto::{WfpMessage, WipMessage, decode_wip, encode_wfp};
 
 use crate::error::BridgeError;
 
@@ -64,12 +64,13 @@ impl FrameQueue {
 
 /// Drives one client connection until either side closes.
 ///
-/// Sends `DisplayInfo` first, then streams queued frames; concurrently drains
-/// inbound WIP messages (input injection arrives in M4).
+/// Sends `DisplayInfo` first, then streams queued frames; concurrently reads
+/// inbound WIP messages, forwarding them to `input` (the injector) when present.
 pub async fn run(
     stream: UnixStream,
     queue: Arc<FrameQueue>,
     display_info: WfpMessage,
+    input: Option<mpsc::Sender<WipMessage>>,
 ) -> Result<(), BridgeError> {
     let (mut read_half, mut write_half) = stream.into_split();
 
@@ -89,18 +90,27 @@ pub async fn run(
 
     tokio::select! {
         result = writer => result,
-        result = drain_input(&mut read_half) => result,
+        result = drain_input(&mut read_half, input.as_ref()) => result,
     }
 }
 
-/// Reads and discards inbound WIP messages, returning when the client closes.
-async fn drain_input(read_half: &mut tokio::net::unix::OwnedReadHalf) -> Result<(), BridgeError> {
+/// Reads inbound WIP messages, forwarding to `input` until the client closes.
+async fn drain_input(
+    read_half: &mut tokio::net::unix::OwnedReadHalf,
+    input: Option<&mpsc::Sender<WipMessage>>,
+) -> Result<(), BridgeError> {
     let mut buf = BytesMut::with_capacity(4096);
     let mut chunk = [0u8; 4096];
     loop {
         // Decode any complete messages already buffered.
         while let Some(msg) = decode_wip(&mut buf)? {
-            trace!(?msg, "received WIP message (input injection lands in M4)");
+            match input {
+                // Drop under backpressure: freshest input matters most.
+                Some(sink) => {
+                    let _ = sink.try_send(msg);
+                }
+                None => trace!(?msg, "no injector configured; dropping input"),
+            }
         }
         let read = read_half.read(&mut chunk).await?;
         if read == 0 {

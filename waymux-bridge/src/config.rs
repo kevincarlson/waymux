@@ -15,18 +15,35 @@ pub enum Encoding {
     Zstd,
 }
 
+/// Where the bridge sources frames from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum SourceKind {
+    /// Capture a real Wayland compositor via `wlr-screencopy`.
+    Wayland,
+    /// Emit a built-in animated test pattern (no compositor required).
+    TestPattern,
+}
+
 /// Bridge daemon configuration.
 ///
 /// Every field has an environment-variable source and a CLI override, matching
-/// the table in `waymux-bridge/docs/spec.md`. The `width`/`height`/`max_fps`
-/// fields drive the built-in test-pattern source until the Wayland capture
-/// backend lands.
+/// the table in `waymux-bridge/docs/spec.md`. The `width`/`height` fields apply
+/// only to the test-pattern source; the Wayland source takes its geometry from
+/// the captured output.
 #[derive(Debug, Clone, Parser)]
 #[command(name = "waymux-bridge", version, about)]
 pub struct Config {
     /// Unix socket path to listen on (default: `$TMPDIR/waymux.sock`).
     #[arg(long, env = "WAYMUX_SOCKET")]
     socket: Option<PathBuf>,
+
+    /// Frame source: `wayland` (capture a compositor) or `test-pattern`.
+    #[arg(long, env = "WAYMUX_SOURCE", default_value = "wayland")]
+    pub source: SourceKind,
+
+    /// Draw the cursor into captured frames (Wayland source only).
+    #[arg(long, env = "WAYMUX_OVERLAY_CURSOR", default_value_t = true)]
+    pub overlay_cursor: bool,
 
     /// Frame encoding to apply before transmission.
     #[arg(long, env = "WAYMUX_ENCODING", default_value = "zstd")]

@@ -68,6 +68,7 @@ async fn client_receives_display_info_then_frames() {
             refresh_hz: 60.0,
         },
         3,
+        None,
     )
     .expect("bind");
     let handle = server.handle();
@@ -121,6 +122,7 @@ async fn server_reports_connect_and_disconnect() {
             refresh_hz: 60.0,
         },
         3,
+        None,
     )
     .expect("bind");
     let handle = server.handle();

@@ -22,11 +22,15 @@ waymux-proto            = { path = "waymux-proto" }
 
 # Wayland (compositor + client)
 smithay                 = "0.7"
-smithay-client-toolkit  = "0.19"
+# SCTK default features pull in xkbcommon (system lib); the bridge only needs
+# registry/output/shm, so defaults are off here and re-enabled per-use.
+smithay-client-toolkit  = { version = "0.19", default-features = false }
 wayland-client          = "0.31"
 wayland-server          = "0.31"
+wayland-backend         = { version = "0.3", features = ["client_system", "dlopen"] }
 wayland-protocols       = "0.31"
 wayland-protocols-wlr   = "0.2"
+wayland-protocols-misc  = "0.2"
 calloop                 = "0.13"
 calloop-wayland-source  = "0.3"
 

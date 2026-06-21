@@ -11,8 +11,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use bytes::Bytes;
 use tokio::net::UnixListener;
 use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 use tracing::{info, warn};
-use waymux_proto::{DisplayInfoMsg, WfpMessage};
+use waymux_proto::{DisplayInfoMsg, WfpMessage, WipMessage};
 
 use crate::error::BridgeError;
 
@@ -27,11 +28,15 @@ pub struct Server {
     registry: Registry,
     display_info: WfpMessage,
     queue_capacity: usize,
+    input: Option<mpsc::Sender<WipMessage>>,
     next_id: AtomicU64,
 }
 
 impl Server {
     /// Binds the server to `socket_path`, removing any stale socket file.
+    ///
+    /// `input`, when present, receives the WIP events decoded from clients (for
+    /// injection by the Wayland source); `None` drops inbound input.
     ///
     /// # Errors
     /// Returns an error if the socket cannot be removed or bound.
@@ -39,6 +44,7 @@ impl Server {
         socket_path: &Path,
         display_info: DisplayInfoMsg,
         queue_capacity: usize,
+        input: Option<mpsc::Sender<WipMessage>>,
     ) -> Result<Self, BridgeError> {
         match std::fs::remove_file(socket_path) {
             Ok(()) => {}
@@ -53,6 +59,7 @@ impl Server {
             registry: Registry::default(),
             display_info: WfpMessage::DisplayInfo(display_info),
             queue_capacity,
+            input,
             next_id: AtomicU64::new(0),
         })
     }
@@ -79,8 +86,9 @@ impl Server {
 
             let registry = self.registry.clone();
             let display_info = self.display_info.clone();
+            let input = self.input.clone();
             tokio::spawn(async move {
-                if let Err(err) = session::run(stream, queue, display_info).await {
+                if let Err(err) = session::run(stream, queue, display_info, input).await {
                     warn!(client = id, error = %err, "session ended with error");
                 }
                 registry.lock().await.remove(&id);

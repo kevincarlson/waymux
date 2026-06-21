@@ -23,19 +23,51 @@ pub mod source;
 pub use config::Config;
 pub use error::BridgeError;
 
-use source::{FrameSource, TestPatternSource};
+use config::SourceKind;
+use source::{FrameSource, TestPatternSource, WaylandScreencopySource};
+use tokio::sync::mpsc;
+use waymux_proto::WipMessage;
 
 /// Builds the daemon from `config` and runs it until the source completes.
 ///
 /// # Errors
-/// Returns a [`BridgeError`] if the socket cannot be bound or the pipeline
-/// fails.
+/// Returns a [`BridgeError`] if the source cannot start, the socket cannot be
+/// bound, or the pipeline fails.
 pub async fn run(config: Config) -> Result<(), BridgeError> {
-    let source = TestPatternSource::new(config.width, config.height, config.max_fps);
-    let display_info = source.display_info();
+    match config.source {
+        SourceKind::TestPattern => {
+            let source = TestPatternSource::new(config.width, config.height, config.max_fps);
+            serve(source, &config, None).await
+        }
+        SourceKind::Wayland => {
+            let source = WaylandScreencopySource::new(config.overlay_cursor, config.max_fps)?;
+            // Bridge the server's tokio input channel to the capture thread's
+            // calloop channel.
+            let calloop_tx = source.input_sender();
+            let (input_tx, mut input_rx) = mpsc::channel::<WipMessage>(256);
+            tokio::spawn(async move {
+                while let Some(msg) = input_rx.recv().await {
+                    let _ = calloop_tx.send(msg);
+                }
+            });
+            serve(source, &config, Some(input_tx)).await
+        }
+    }
+}
 
-    let server =
-        server::Server::bind(&config.socket_path(), display_info, config.queue_capacity())?;
+/// Common wiring: bind the server, start accepting, and drive the pipeline.
+async fn serve<S: FrameSource + Send + 'static>(
+    source: S,
+    config: &Config,
+    input: Option<mpsc::Sender<WipMessage>>,
+) -> Result<(), BridgeError> {
+    let display_info = source.display_info();
+    let server = server::Server::bind(
+        &config.socket_path(),
+        display_info,
+        config.queue_capacity(),
+        input,
+    )?;
     let handle = server.handle();
     let accept = tokio::spawn(server.run_accept());
 

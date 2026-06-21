@@ -1,13 +1,11 @@
 //! Frame sources: producers of raw BGRA8 frames for the encode pipeline.
 //!
-//! [`FrameSource`] is the seam where a real Wayland `wlr-screencopy` capture
-//! backend will plug in (see `waymux-bridge/docs/spec.md`). Today the bridge
-//! ships [`TestPatternSource`], an animated synthetic source that lets the
-//! whole capture → encode → stream pipeline run without a compositor — useful
-//! for developing and testing the Android client (M3) before the Wayland
-//! backend exists.
+//! [`FrameSource`] is the seam two backends implement: [`WaylandScreencopySource`]
+//! captures a real compositor via `wlr-screencopy`, and [`TestPatternSource`]
+//! emits an animated synthetic image so the pipeline runs without a compositor.
 
 mod test_pattern;
+mod wayland;
 
 use std::future::Future;
 
@@ -18,6 +16,7 @@ use waymux_proto::DisplayInfoMsg;
 use crate::error::BridgeError;
 
 pub use test_pattern::TestPatternSource;
+pub use wayland::WaylandScreencopySource;
 
 /// Bytes per pixel in a BGRA8 frame.
 pub const BYTES_PER_PIXEL: u32 = 4;
