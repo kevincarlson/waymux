@@ -14,6 +14,45 @@
 
 ---
 
+## Implementation Status
+
+The crate is built around a `source::FrameSource` seam (`display_info()` plus an
+async `run()` that feeds `RawFrame`s into the pipeline). This decouples *where
+frames come from* from the encode/serve machinery, so the Wayland capture
+backend slots in without touching the rest of the daemon.
+
+**Implemented and host-tested (run without a compositor):**
+
+- `config` — env + CLI parsing (`WAYMUX_SOURCE`, `WAYMUX_SOCKET`,
+  `WAYMUX_ENCODING`, `WAYMUX_OVERLAY_CURSOR`, …).
+- `source::TestPatternSource` — an animated BGRA8 gradient source (select with
+  `--source test-pattern`), so the daemon streams real frames with no compositor.
+- `encoder` — `FrameEncoder` trait with `RawBgra8Encoder` and `ZstdBgra8Encoder`
+  (row-packing, padding strip, zstd round-trip).
+- `server` — Unix socket accept loop, per-client `FrameQueue` with **drop-oldest**
+  backpressure, `DisplayInfo`-on-connect, session registry, and inbound WIP
+  forwarding to the injector.
+- `pipeline` — source → encode → `FrameFull` framing → broadcast fan-out.
+
+**Implemented, compiles but needs a live `wlr-screencopy` compositor (e.g. in
+Termux) to validate at runtime:**
+
+- `source::wayland` (the default `--source wayland`) — captures the primary
+  output via `wlr-screencopy` using `smithay-client-toolkit`'s shm pool, on a
+  dedicated `calloop` thread bridged to the tokio pipeline. Connection/global
+  failures are reported cleanly (exit code 3).
+- Input injection (M4) via `zwlr-virtual-pointer-v1`: pointer motion, buttons,
+  scroll, and touch (emulated as a left button). The inbound WIP stream is
+  decoded by the server and forwarded to the injector over a channel.
+
+**Remaining injection work (M4 tail):**
+
+- Keyboard injection (`zwp-virtual-keyboard-v1`) — needs an uploaded xkb keymap
+  and an Android→evdev keycode map. Key events are decoded but not yet injected.
+- Stylus/pressure injection. Damage-region capture (`FrameDamage`) is M5.
+
+---
+
 ## Dependencies
 
 ```toml

@@ -1,7 +1,7 @@
 # Waymux Client — Package Specification
 
 This document covers both sub-packages:
-- `waymux-client-rs/` — Rust JNI library (`cdylib`)
+- `waymux-client/` — Rust JNI library (`cdylib`)
 - `waymux-client-android/` — Android application (Kotlin)
 
 **Version:** 0.1.0  
@@ -20,6 +20,48 @@ The Waymux Client is an Android application that:
 3. Captures all Android input events (touch, stylus, keyboard, mouse) and forwards them as WIP messages to the bridge.
 
 The Kotlin `Activity` is a thin shell that manages Android lifecycle and delegates all logic to `libwaymux_client.so` (the Rust JNI library).
+
+---
+
+## Implementation Status
+
+The `waymux-client` crate is currently the **host-portable client core**: the
+protocol-facing logic that builds and is fully tested in CI without an Android
+device or NDK.
+
+**Implemented (M3 core), host-tested:**
+
+- `decoder` — `decode_full()` turning WFP `FrameFull` payloads into BGRA8
+  (`RawBgra8` passthrough and `ZstdBgra8` decompression), with size validation.
+- `input` — `InputSerializer`: Android-space pointer/touch/stylus/keyboard
+  events → WIP messages, applying the `compositor / surface` coordinate
+  normalization; plus `serialize()` to length-prefixed bytes.
+- `connection` — tokio `UnixStream` transport: reads framed WFP, writes framed
+  WIP.
+- `state::ClientState` — owns the background connection task, exposes the latest
+  decoded frame and display info to the render thread, multiplexes outbound
+  input, and answers WFP `Ping` with WIP `Pong`.
+- `examples/dump_frame.rs` — connects to a running bridge and prints the first
+  decoded frame; verified live against `waymux-bridge` over a real socket.
+
+**Implemented (M3 Android layer), compiles for `aarch64-linux-android` but not
+yet run on a device:**
+
+- `android` (cfg `target_os = "android"`) — the JNI cdylib exports
+  (`Java_app_appthere_waymux_RustBridge_*`) wrapping `ClientState` behind an
+  opaque `jlong` handle: init/connect, surface lifecycle, typed input
+  forwarding, and destroy. Contains the crate's only `unsafe` (the JNI/FFI
+  boundary and `ANativeWindow_fromSurface`), each block with a `// SAFETY` note.
+- `renderer` (cfg `target_os = "android"`) — wgpu/Vulkan: uploads `DecodedFrame`
+  to a `Bgra8Unorm` texture and blits it fullscreen onto the `ANativeWindow`,
+  on a dedicated render thread.
+- `waymux-client-android/` — Kotlin Activity (`MainActivity`), `RustBridge`
+  JNI bindings, `WaymuxSurfaceView`, `InputForwarder`, and a Gradle build that
+  cross-compiles the Rust via `cargo-ndk`. See its `README.md`.
+
+The crate is `crate-type = ["lib", "cdylib"]`: the host build/tests cover the
+pure-Rust core; `cargo check --target aarch64-linux-android` covers the Android
+modules. **On-device rendering/input has not been exercised** (no device in CI).
 
 ---
 
@@ -48,7 +90,7 @@ The Kotlin `Activity` is a thin shell that manages Android lifecycle and delegat
 
 ---
 
-## waymux-client-rs
+## waymux-client
 
 ### Dependencies
 
@@ -71,7 +113,7 @@ zstd           = "0.13"
 ### Module Layout
 
 ```
-waymux-client-rs/src/
+waymux-client/src/
 ├── lib.rs            # JNI exports only; initializes runtime on first call
 ├── error.rs          # ClientError type
 ├── state.rs          # ClientState: owns runtime, renderer, connection
@@ -233,7 +275,7 @@ No internet permission is required (all communication is local Unix socket).
 
 ## Testing Requirements
 
-### Rust (waymux-client-rs)
+### Rust (waymux-client)
 
 - `tests/decoder_raw.rs`: create a synthetic `WfpMessage::FrameFull` with `RawBgra8` encoding, decode it, verify pixel data matches.
 - `tests/decoder_zstd.rs`: same with `ZstdBgra8` encoding; compress input first with `zstd`, then decode.

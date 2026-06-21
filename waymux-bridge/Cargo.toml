@@ -1,0 +1,28 @@
+[package]
+name = "waymux-bridge"
+description = "Termux daemon that captures compositor frames, encodes them, and streams them to Waymux clients over a Unix socket."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+waymux-proto = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+zstd = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { workspace = true }
+
+# Wayland client: capture (wlr-screencopy) and input injection (virtual
+# pointer/keyboard). `wayland-backend` dlopens libwayland at runtime so the
+# bridge links without libwayland dev files.
+smithay-client-toolkit = { workspace = true, features = ["calloop"] }
+wayland-client = { workspace = true }
+wayland-backend = { workspace = true }
+wayland-protocols-wlr = { workspace = true, features = ["client"] }
+calloop = { workspace = true }
+calloop-wayland-source = { workspace = true }

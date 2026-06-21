@@ -155,7 +155,7 @@ Coordinates are normalized to the compositor's logical pixel space. The client m
 ```
 waymux-proto          (shared types: WFP/WIP message enums, codecs)
     ├── waymux-bridge (uses waymux-proto + smithay-client-toolkit + zstd)
-    └── waymux-client-rs (uses waymux-proto + wgpu; compiled as .so for Android JNI)
+    └── waymux-client (uses waymux-proto + wgpu; compiled as .so for Android JNI)
 
 light-speed-desktop   (uses smithay + iced/gtk4; independent of waymux-proto)
 ```
@@ -182,7 +182,7 @@ waymux/
 ├── waymux-bridge/
 │   ├── SPEC.md
 │   └── src/
-├── waymux-client-rs/
+├── waymux-client/
 │   ├── SPEC.md
 │   └── src/
 ├── waymux-client-android/           ← Android Studio project
@@ -202,7 +202,7 @@ waymux/
 
 - **File length limit:** 300 lines. Files approaching this limit must be split by logical concern.
 - **No `unwrap()` or `expect()`** in library code. Use `?` propagation, typed errors (`thiserror`), or explicit `match`.
-- **No `unsafe` blocks** unless a crate's purpose inherently requires FFI (e.g., `waymux-client-rs`'s JNI boundary). Every `unsafe` block must have a `// SAFETY:` comment explaining the invariants upheld.
+- **No `unsafe` blocks** unless a crate's purpose inherently requires FFI (e.g., `waymux-client`'s JNI boundary). Every `unsafe` block must have a `// SAFETY:` comment explaining the invariants upheld.
 - **No excessive `.clone()`**: prefer borrows, `Arc` sharing, or redesigned ownership. Clones that cross an allocation boundary for large data (frames, strings > 64 bytes) must be justified in a comment.
 - **Rust 2024 edition** for all crates.
 - **Apache-2.0** license for all crates except where a dual MIT/Apache-2.0 is needed for broader compatibility (document in ADR).
@@ -231,7 +231,7 @@ waymux/
 
 ### 7.5 Async Runtime
 
-- Use `tokio` as the async runtime for `waymux-bridge` and `waymux-client-rs`.
+- Use `tokio` as the async runtime for `waymux-bridge` and `waymux-client`.
 - Smithay's event loop (`calloop`) is used for compositor event handling in `light-speed-desktop`; async tasks that cross into tokio must use `calloop`'s tokio integration or channels.
 
 ---
@@ -259,7 +259,7 @@ waymux/
 | Sub-project | Target Triple |
 |---|---|
 | `waymux-bridge` | `aarch64-linux-android` (Termux) |
-| `waymux-client-rs` | `aarch64-linux-android` (Android JNI `.so`) |
+| `waymux-client` | `aarch64-linux-android` (Android JNI `.so`) |
 | `light-speed-desktop` | `aarch64-unknown-linux-gnu`, `x86_64-unknown-linux-gnu` |
 | Android app | `arm64-v8a` (primary), `x86_64` (emulator) |
 

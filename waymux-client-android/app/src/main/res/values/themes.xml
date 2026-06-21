@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fullscreen, no action bar. Uses a platform theme so the app needs no
+         AndroidX/Material dependencies. -->
+    <style name="Theme.Waymux" parent="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+</resources>

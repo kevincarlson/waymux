@@ -1,0 +1,21 @@
+[package]
+name = "waymux-proto"
+description = "Shared binary wire protocol (WFP frames + WIP input) for the Waymux forwarding system."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+# Derive serde Serialize/Deserialize on every message type.
+serde = ["dep:serde", "bytes/serde"]
+
+[dependencies]
+thiserror = { workspace = true }
+bytes = { workspace = true }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
