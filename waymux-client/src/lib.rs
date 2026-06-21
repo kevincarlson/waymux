@@ -15,7 +15,11 @@
 //! 3. Build WIP messages with [`InputSerializer`] and forward them via
 //!    [`ClientState::send_input`].
 
-#![forbid(unsafe_code)]
+// The host build is `unsafe`-free; Android needs `unsafe` only at the JNI/FFI
+// boundary (the `android` and `renderer` modules), where every block carries a
+// `// SAFETY:` note.
+#![cfg_attr(not(target_os = "android"), forbid(unsafe_code))]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![deny(missing_docs)]
 
 pub mod connection;
@@ -23,6 +27,11 @@ pub mod decoder;
 pub mod error;
 pub mod input;
 pub mod state;
+
+#[cfg(target_os = "android")]
+mod android;
+#[cfg(target_os = "android")]
+mod renderer;
 
 pub use decoder::{DecodedFrame, decode_full};
 pub use error::ClientError;

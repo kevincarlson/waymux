@@ -18,7 +18,7 @@ pub enum ClientError {
 
     /// Zstd decompression of a frame payload failed.
     #[error("zstd decompression failed: {0}")]
-    Zstd(io::Error),
+    Decompress(String),
 
     /// The bridge sent a frame in an encoding the client cannot decode.
     #[error("unsupported frame encoding: {0:?}")]

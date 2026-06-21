@@ -81,6 +81,22 @@ impl ClientState {
             .await
             .map_err(|_| ClientError::Closed)
     }
+
+    /// Queues an input event without awaiting, for callers on a non-async
+    /// thread (e.g. the Android UI thread).
+    ///
+    /// Under backpressure the event is dropped rather than blocking, since
+    /// input is high-frequency and the freshest events matter most.
+    ///
+    /// # Errors
+    /// Returns [`ClientError::Closed`] if the connection task has stopped.
+    pub fn try_send_input(&self, msg: WipMessage) -> Result<(), ClientError> {
+        use tokio::sync::mpsc::error::TrySendError;
+        match self.outbound.try_send(msg) {
+            Ok(()) | Err(TrySendError::Full(_)) => Ok(()),
+            Err(TrySendError::Closed(_)) => Err(ClientError::Closed),
+        }
+    }
 }
 
 impl Drop for ClientState {

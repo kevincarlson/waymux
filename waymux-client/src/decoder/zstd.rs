@@ -1,4 +1,10 @@
-//! Decoder for `ZstdBgra8` frames.
+//! Decoder for `ZstdBgra8` frames, using the pure-Rust `ruzstd` decompressor.
+//!
+//! The client only ever decompresses, so a decode-only pure-Rust implementation
+//! keeps the crate free of C dependencies and trivially cross-compilable to
+//! Android.
+
+use std::io::Read;
 
 use bytes::Bytes;
 
@@ -7,10 +13,15 @@ use crate::error::ClientError;
 /// Decompresses a zstd-compressed BGRA8 payload.
 ///
 /// # Errors
-/// Returns [`ClientError::Zstd`] if the payload is not valid zstd.
+/// Returns [`ClientError::Decompress`] if the payload is not valid zstd.
 pub(super) fn decode(data: &Bytes) -> Result<Bytes, ClientError> {
-    let raw = zstd::decode_all(data.as_ref()).map_err(ClientError::Zstd)?;
-    Ok(Bytes::from(raw))
+    let mut decoder = ruzstd::StreamingDecoder::new(data.as_ref())
+        .map_err(|err| ClientError::Decompress(err.to_string()))?;
+    let mut out = Vec::new();
+    decoder
+        .read_to_end(&mut out)
+        .map_err(|err| ClientError::Decompress(err.to_string()))?;
+    Ok(Bytes::from(out))
 }
 
 #[cfg(test)]
@@ -28,6 +39,6 @@ mod tests {
     #[test]
     fn rejects_invalid_payload() {
         let result = decode(&Bytes::from_static(&[0xff, 0x00, 0x12, 0x34]));
-        assert!(matches!(result, Err(ClientError::Zstd(_))));
+        assert!(matches!(result, Err(ClientError::Decompress(_))));
     }
 }

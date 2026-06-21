@@ -44,17 +44,24 @@ device or NDK.
 - `examples/dump_frame.rs` — connects to a running bridge and prints the first
   decoded frame; verified live against `waymux-bridge` over a real socket.
 
-**Deferred (requires the Android NDK / SDK and a device or emulator to build
-and verify):**
+**Implemented (M3 Android layer), compiles for `aarch64-linux-android` but not
+yet run on a device:**
 
-- The JNI cdylib layer (`crate-type = ["cdylib"]`, `jni`): the
-  `Java_app_appthere_waymux_RustBridge_*` exports described below, wrapping
-  `ClientState` behind an opaque handle. Adds the crate's single `unsafe` block
-  (`ANativeWindow_fromSurface`).
-- The `renderer` (wgpu/Vulkan): upload `DecodedFrame` to a texture and blit to
-  the `ANativeWindow`.
-- `waymux-client-android` — the Kotlin Activity, `RustBridge` bindings, and
-  Gradle build integration.
+- `android` (cfg `target_os = "android"`) — the JNI cdylib exports
+  (`Java_app_appthere_waymux_RustBridge_*`) wrapping `ClientState` behind an
+  opaque `jlong` handle: init/connect, surface lifecycle, typed input
+  forwarding, and destroy. Contains the crate's only `unsafe` (the JNI/FFI
+  boundary and `ANativeWindow_fromSurface`), each block with a `// SAFETY` note.
+- `renderer` (cfg `target_os = "android"`) — wgpu/Vulkan: uploads `DecodedFrame`
+  to a `Bgra8Unorm` texture and blits it fullscreen onto the `ANativeWindow`,
+  on a dedicated render thread.
+- `waymux-client-android/` — Kotlin Activity (`MainActivity`), `RustBridge`
+  JNI bindings, `WaymuxSurfaceView`, `InputForwarder`, and a Gradle build that
+  cross-compiles the Rust via `cargo-ndk`. See its `README.md`.
+
+The crate is `crate-type = ["lib", "cdylib"]`: the host build/tests cover the
+pure-Rust core; `cargo check --target aarch64-linux-android` covers the Android
+modules. **On-device rendering/input has not been exercised** (no device in CI).
 
 ---
 

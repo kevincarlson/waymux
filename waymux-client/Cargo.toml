@@ -7,15 +7,30 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
-# NOTE: the JNI cdylib layer (`crate-type = ["cdylib"]`, `jni`, `wgpu`,
-# `tracing-android`) is added together with the Android integration; it cannot
-# be built or tested without the Android NDK, which this environment lacks.
-# Until then this is a host-testable library crate.
+# The JNI cdylib + wgpu renderer are compiled only for Android targets (see the
+# `[target.'cfg(target_os = "android")']` section below and the `android`/
+# `renderer` modules). The rest of the crate is pure Rust and host-testable.
+
+[lib]
+crate-type = ["lib", "cdylib"]
 
 [dependencies]
 waymux-proto = { workspace = true }
 tokio = { workspace = true }
 bytes = { workspace = true }
-zstd = { workspace = true }
+ruzstd = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+
+# Android-only: JNI bindings, GPU rendering, native window, logcat sink.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { workspace = true }
+wgpu = { workspace = true }
+ndk = { workspace = true, features = ["api-level-29"] }
+raw-window-handle = { workspace = true }
+tracing-android = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+# Used only to build compressed test fixtures; the client decodes with ruzstd.
+zstd = { workspace = true }

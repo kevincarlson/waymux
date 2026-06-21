@@ -29,7 +29,7 @@ pub struct DecodedFrame {
 ///
 /// # Errors
 /// Returns [`ClientError::UnsupportedEncoding`] for encodings the client does
-/// not implement, [`ClientError::Zstd`] on decompression failure, and
+/// not implement, [`ClientError::Decompress`] on decompression failure, and
 /// [`ClientError::FrameSize`] if the pixel count disagrees with the geometry.
 pub fn decode_full(msg: &FrameFullMsg) -> Result<DecodedFrame, ClientError> {
     let pixels = match msg.encoding {

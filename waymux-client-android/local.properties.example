@@ -1,0 +1,13 @@
+# Copy this file to `local.properties` and adjust for your machine.
+# Android Studio normally generates `local.properties` automatically.
+
+# Path to the Android SDK.
+#   Windows example:
+sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+#   macOS/Linux example:
+# sdk.dir=/home/YOUR_USER/Android/Sdk
+
+# The NDK is located via ANDROID_NDK_HOME (see README.md). If you prefer, you
+# can instead set ndk.dir here, but ANDROID_NDK_HOME is recommended because
+# cargo-ndk reads it directly:
+# ndk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk\\ndk\\27.0.12077973
